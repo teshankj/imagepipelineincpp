@@ -30,10 +30,9 @@ bool checkImageExtension(const std::string& filepath, ImageMetaData& metaData) {
         return false;
     }
 
-    std::string magicNumber;
-    file >> magicNumber;
-    if (magicNumber != "P6" && magicNumber != "P3") {
-        std::cout<<"Error:Invalid PPM format. Expected P6 or P3, got: " << magicNumber << std::endl;
+    file >> metaData.magicNumber;
+    if (metaData.magicNumber != "P6" && metaData.magicNumber != "P3") {
+        std::cout<<"Error:Invalid PPM format. Expected P6 or P3, got: " << metaData.magicNumber << std::endl;
         return false; // Invalid PPM format
     }
 
@@ -49,6 +48,8 @@ bool checkImageExtension(const std::string& filepath, ImageMetaData& metaData) {
     file >> metaData.width >> metaData.height >> metaData.maxColorValue;
     std::cout << "Info: Image dimensions: " << metaData.width << "x" << metaData.height 
               << ", Max Color Value: " << metaData.maxColorValue << std::endl;
+
+
     std::cout << "Success: Valid " << metaData.magicNumber << " PPM file detected."<< "\n-----------------------" << "\n-----------------------" <<std::endl;
     file.close();
     return true;
