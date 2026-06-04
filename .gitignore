@@ -13,3 +13,7 @@
 # OS-generated metadata files
 Thumbs.db
 Desktop.ini
+
+
+# test files
+test.cpp
