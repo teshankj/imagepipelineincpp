@@ -1,0 +1,15 @@
+# Prerequisites
+*.exe
+*.o
+*.obj
+*.out
+*.ppm
+
+# VS Code Metadata and Workspace Storage caches
+.vscode/
+.history/
+*.code-workspace
+
+# OS-generated metadata files
+Thumbs.db
+Desktop.ini
