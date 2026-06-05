@@ -9,6 +9,7 @@ A lightweight, high-performance image preprocessing pipeline implemented in mode
 * **Stage 1 (Format Validation):** Verifies filename extension bounds (`.ppm` / `.PPM`) and inspects the inner header for valid magic numbers (`P3` or `P6`).
 * **Stage 2 (Header Parsing & Metadata Extraction):** * Implements lookahead byte parsing via `file.peek()` to robustly skip multi-line image comments (`#`).
   * Extracts structural metadata (`width`, `height`, `maxColorValue`) into a modular `ImageMetaData` structure passed by reference.
+* **Stage 3 (Image resizing to 256 *256 ):** resize images using Nearest Neighbor and Bilinear Interpolation.
 
 ---
 
@@ -23,4 +24,5 @@ A lightweight, high-performance image preprocessing pipeline implemented in mode
 ├── images/               # Put your sample test .ppm images here
 ├── .gitignore            
 ├── README.md             
-└── imageopp.cpp              # Core execution pipeline source code
+├── imageopp.cpp              # Core execution for stage 1 & 2 pipeline code
+└── evalsizer.cpp             # Core execution for stage 3 pipeline code
