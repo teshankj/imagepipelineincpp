@@ -24,7 +24,7 @@ struct ResizedImageData {
 
 // Writes the processed memory buffer back to a file in the /output folder
 void savePPMImage(const std::string& filename, const ResizedImageData& resizedData, const std::vector<uint8_t>& pixelBuffer) {
-    std::string outputDir = "output";
+    std::string outputDir = "outputv";
     if (!fs::exists(outputDir)) {
         fs::create_directory(outputDir);
         std::cout << "Info: Created directory '" << outputDir << "'" << std::endl;
@@ -169,24 +169,55 @@ void BilinearResizer(const std::string& filepath, ImageMetaData& metaData, Resiz
     for (int y = 0; y < resizedData.newHeight; ++y) {
         for (int x = 0; x < resizedData.newWidth; ++x) {
             
-            // Map target pixel center back to continuous coordinate space in the source image
-            int srcX = static_cast<int>((x + 0.5f) * resizedData.xscaleFactor);
-            int srcY = static_cast<int>((y + 0.5f) * resizedData.yscaleFactor);
+            // Locate the 4 Neighboring Pixels in the source image that surround the mapped coordinate
+            int srcX_floor = static_cast<int>((x + 0.5f) * resizedData.xscaleFactor);
+            int srcY_floor = static_cast<int>((y + 0.5f) * resizedData.yscaleFactor);
+            int srcX_ceil = srcX_floor + 1;
+            int srcY_ceil = srcY_floor + 1;
             
             // Safety clip boundaries to guarantee we stay inside index boundaries
-            if (srcX >= metaData.width)  srcX = metaData.width - 1;
-            if (srcY >= metaData.height) srcY = metaData.height - 1;
-            if (srcX < 0) srcX = 0;
-            if (srcY < 0) srcY = 0;
+            if (srcX_ceil >= metaData.width)  srcX_ceil = metaData.width - 1;
+            if (srcY_ceil >= metaData.height) srcY_ceil = metaData.height - 1;
+            if (srcX_floor < 0) srcX_floor = 0;
+            if (srcY_floor < 0) srcY_floor = 0;
 
-            // Compute 1D structural offsets for both arrays
-            int srcIdx = (srcY * metaData.width + srcX) * 3;
+            // Calculate the Fractional Offsets (Weights)
+            float x_diff = ((x + 0.5f) * resizedData.xscaleFactor) - srcX_floor;
+            float y_diff = ((y + 0.5f) * resizedData.yscaleFactor) - srcY_floor;
+
+            // Compute 1D structural offsets for the four neighbors
+            int idx_top_left     = (srcY_floor * metaData.width + srcX_floor) * 3;
+            int idx_top_right    = (srcY_floor * metaData.width + srcX_ceil) * 3;
+            int idx_bottom_left  = (srcY_ceil * metaData.width + srcX_floor) * 3;
+            int idx_bottom_right = (srcY_ceil * metaData.width + srcX_ceil) * 3;
+
+            // =========================================================================
+            // Perform the Multi-Step Linear Blending independently for each color channel
+            // =========================================================================
+
+            // 1. RED CHANNEL PROCESSING (Offset + 0)
+            float top_R = (1.0f - x_diff) * srcPixelBuffer[idx_top_left] + x_diff * srcPixelBuffer[idx_top_right];
+            float bot_R = (1.0f - x_diff) * srcPixelBuffer[idx_bottom_left] + x_diff * srcPixelBuffer[idx_bottom_right];
+            uint8_t final_R = static_cast<uint8_t>((1.0f - y_diff) * top_R + y_diff * bot_R);
+
+            // 2. GREEN CHANNEL PROCESSING (Offset + 1)
+            float top_G = (1.0f - x_diff) * srcPixelBuffer[idx_top_left + 1] + x_diff * srcPixelBuffer[idx_top_right + 1];
+            float bot_G = (1.0f - x_diff) * srcPixelBuffer[idx_bottom_left + 1] + x_diff * srcPixelBuffer[idx_bottom_right + 1];
+            uint8_t final_G = static_cast<uint8_t>((1.0f - y_diff) * top_G + y_diff * bot_G);
+
+            // 3. BLUE CHANNEL PROCESSING (Offset + 2)
+            float top_B = (1.0f - x_diff) * srcPixelBuffer[idx_top_left + 2] + x_diff * srcPixelBuffer[idx_top_right + 2];
+            float bot_B = (1.0f - x_diff) * srcPixelBuffer[idx_bottom_left + 2] + x_diff * srcPixelBuffer[idx_bottom_right + 2];
+            uint8_t final_B = static_cast<uint8_t>((1.0f - y_diff) * top_B + y_diff * bot_B);
+
+            // =========================================================================
+            // Map the uniquely blended RGB values over to the destination buffer
+            // =========================================================================
             int dstIdx = (y * resizedData.newWidth + x) * 3;
-            
-            // Map the RGB values over directly
-            targetPixelBuffer[dstIdx]     = srcPixelBuffer[srcIdx];     // Red
-            targetPixelBuffer[dstIdx + 1] = srcPixelBuffer[srcIdx + 1]; // Green
-            targetPixelBuffer[dstIdx + 2] = srcPixelBuffer[srcIdx + 2]; // Blue
+            targetPixelBuffer[dstIdx]     = final_R; 
+            targetPixelBuffer[dstIdx + 1] = final_G; 
+            targetPixelBuffer[dstIdx + 2] = final_B;
+
         }
     }
 
@@ -216,7 +247,7 @@ int main() {
                 ResizedImageData resizedData;
                 
                 // Let's run the fully unified pipeline engine
-                NNIresizer(entry.path().string(), metaData, resizedData, filename);
+                BilinearResizer(entry.path().string(), metaData, resizedData, filename);
                 std::cout << "-----------------------------------" << std::endl;
             }
         }
